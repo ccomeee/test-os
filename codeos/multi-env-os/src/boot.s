@@ -43,6 +43,46 @@ start:
     mov si, kernel_msg2
     call print_string
 
+    ; 切換到 VBE 模式 0x117 (640x480x16bpp) 並啟用 LFB
+    mov ax, 0x4F02
+    mov bx, 0x4117         ; bit14=1 要求 Linear Framebuffer
+    int 0x10
+
+    ; 讀取 VBE 模式資訊 0x117 到 ES:DI = 0x9000:0000
+    mov ax, 0x9000
+    mov es, ax
+    xor di, di
+    mov ax, 0x4F01
+    mov cx, 0x0117
+    int 0x10
+
+    ; 從 ES:DI 的 ModeInfo 結構擷取欄位，寫到實體 0x8000
+    ; 我們的簡化結構：
+    ; 0x8000: width  (2)
+    ; 0x8002: height (2)
+    ; 0x8004: bpp    (2)
+    ; 0x8006: pitch  (2)
+    ; 0x8008: physbase (4)
+
+    mov bx, 0x8000
+    ; 寫 width/height/bpp 為 0x117 既知值
+    mov ax, 640
+    mov [bx+0], ax
+    mov ax, 480
+    mov [bx+2], ax
+    mov ax, 16
+    mov [bx+4], ax
+    ; 先取 LinBytesPerScanLine (0x58)，若為 0 則退回 BytesPerScanLine (0x10)
+    mov ax, [es:di+0x58]
+    test ax, ax
+    jnz .have_pitch
+    mov ax, [es:di+0x10]
+.have_pitch:
+    mov [bx+6], ax
+    ; 寫 PhysBasePtr (offset 0x28, 4 bytes)
+    mov eax, [es:di+0x28]
+    mov [bx+8], eax
+
     ; 切换到保护模式
     cli
     lgdt [gdt_descriptor]
