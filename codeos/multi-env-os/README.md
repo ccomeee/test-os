@@ -13,35 +13,6 @@ Multi Env OS is an operating system designed to provide a versatile programming 
 - **Node.js Environment**: A setup for running JavaScript applications on the server side.
 - **Device Drivers**: Manage hardware interactions and facilitate communication between the OS and hardware components.
 
-## Project Structure
-
-```
-multi-env-os
-├── src
-│   ├── kernel
-│   │   └── main.c
-│   ├── apps
-│   │   ├── browser
-│   │   │   └── browser.c
-│   │   ├── editor
-│   │   │   └── editor.c
-│   │   ├── terminal
-│   │   │   └── terminal.c
-│   │   ├── python_env
-│   │   │   └── python_env.c
-│   │   ├── cpp_env
-│   │   │   └── cpp_env.cpp
-│   │   └── nodejs_env
-│   │       └── nodejs_env.js
-│   ├── drivers
-│   │   └── driver.c
-│   └── include
-│       └── os.h
-├── build
-│   └── Makefile
-├── README.md
-```
-
 ## Setup Instructions
 
 1. Clone the repository to your local machine.
