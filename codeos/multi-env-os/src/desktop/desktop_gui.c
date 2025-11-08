@@ -46,6 +46,7 @@ void desktop_launch_app_by_name(const char* name) {
 // VGA 圖形模式設定
 #include <video_mode.h>
 #include <resources.h>
+#include <png.h>
 // 壁紙顯示函式（BMP/PNG 將共用介面；目前先有 BMP）
 int draw_bmp_onto_screen(const unsigned char* data, unsigned int len, int dst_x, int dst_y);
 int draw_bmp_fit_center_screen(const unsigned char* data, unsigned int len, int bottom_reserved);
@@ -351,8 +352,12 @@ void draw_desktop() {
     unsigned short W = get_screen_width(); (void)W;
     unsigned short H = get_screen_height();
     const unsigned char* res_ptr = NULL; unsigned int res_len = 0; int drew = -1;
-    // 先找 PNG（之後會加入 PNG 解碼），當前先跳過，接著找 BMP
-    if (find_resource("wallpaper.bmp", &res_ptr, &res_len) == 0 && res_len > 64) {
+    // 先試 PNG
+    if (find_resource("wallpaper.png", &res_ptr, &res_len) == 0 && res_len > 64) {
+        drew = draw_png_fit_center_screen(res_ptr, res_len, TASKBAR_HEIGHT);
+    }
+    // 失敗再找 BMP
+    if (drew < 0 && find_resource("wallpaper.bmp", &res_ptr, &res_len) == 0 && res_len > 64) {
         drew = draw_bmp_fit_center_screen(res_ptr, res_len, TASKBAR_HEIGHT);
     }
     if (drew < 0) {

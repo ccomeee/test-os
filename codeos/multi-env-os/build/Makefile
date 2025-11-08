@@ -2,7 +2,9 @@ ASM     = nasm
 CC      = i686-elf-gcc
 CXX     = i686-elf-g++
 LD      = i686-elf-ld
+PYTHON = python
 SRC_DIR = ../src
+TOOLS_DIR = ../tools
 BUILD_DIR = .
 INCLUDES = -I$(SRC_DIR)/include
 
@@ -40,6 +42,7 @@ DRIVER_SRC = $(SRC_DIR)/drivers/driver.c
 OBJS = $(BUILD_DIR)/start.o \
        $(BUILD_DIR)/graphics_main.o \
        $(BUILD_DIR)/bmp.o \
+       $(BUILD_DIR)/png.o \
        $(BUILD_DIR)/resources.o \
        $(BUILD_DIR)/video_mode.o \
        $(BUILD_DIR)/desktop_fs.o \
@@ -67,15 +70,22 @@ OBJS = $(BUILD_DIR)/start.o \
        $(BUILD_DIR)/nodejs_env.o \
        $(BUILD_DIR)/file_manager.o
 
-KERNEL_ELF = $(BUILD_DIR)/kernel.elf
-KERNEL_BIN = $(BUILD_DIR)/kernel.bin
+KERNEL_ELF = kernel.elf
+KERNEL_BIN = kernel.bin
+WLP_BIN     = wallpaper.bin
+RES_DIR     = ../src/resources
 BOOT_BIN   = $(BUILD_DIR)/boot.bin
+STAGE2_BIN = $(BUILD_DIR)/stage2.bin
+MANIFEST_BIN = $(BUILD_DIR)/manifest.bin
 IMG        = $(BUILD_DIR)/os.img
 
 # 编译规则
 all: $(IMG)
 
 $(BUILD_DIR)/boot.bin: $(SRC_DIR)/boot.s
+	$(ASM) -f bin $< -o $@
+
+$(BUILD_DIR)/stage2.bin: $(SRC_DIR)/stage2.s
 	$(ASM) -f bin $< -o $@
 
 # 启动代码编译规则 - 添加这一行！
@@ -112,13 +122,30 @@ $(KERNEL_ELF): $(OBJS) $(SRC_DIR)/linker.ld
 $(KERNEL_BIN): $(KERNEL_ELF)
 	i686-elf-objcopy -O binary $< $@
 
-$(IMG): $(BOOT_BIN) $(KERNEL_BIN)
-	cat $^ > $@
-	# 確保映像有足夠的扇區
-	dd if=/dev/zero bs=512 count=1 >> $@ 2>/dev/null || echo "" >> $@
-	@echo "Image created: $@"
-	@echo "Boot sector size:" $$(stat -c%s $(BOOT_BIN)) "bytes"
-	@echo "Kernel size:" $$(stat -c%s $(KERNEL_BIN)) "bytes"
+$(WLP_BIN):
+	@sh -c 'set -e; f=""; \
+	if [ -f "$(RES_DIR)/wallpaper.png" ]; then f="$(RES_DIR)/wallpaper.png"; \
+	elif [ -f "$(RES_DIR)/wallpaper.bmp" ]; then f="$(RES_DIR)/wallpaper.bmp"; \
+	elif ls "$(RES_DIR)"/*.png >/dev/null 2>&1; then f=$$(ls "$(RES_DIR)"/*.png | head -n1); \
+	elif ls "$(RES_DIR)"/*.bmp >/dev/null 2>&1; then f=$$(ls "$(RES_DIR)"/*.bmp | head -n1); \
+	else echo "No wallpaper found in $(RES_DIR)"; exit 1; fi; \
+	cat "$$f" > $(WLP_BIN)'
+
+$(MANIFEST_BIN) $(IMG): $(BOOT_BIN) $(STAGE2_BIN) $(KERNEL_BIN) $(WLP_BIN) | $(TOOLS_DIR)/build_image.py
+	set -e; \
+	$(PYTHON) $(TOOLS_DIR)/build_image.py \
+		--boot $(BOOT_BIN) \
+		--stage2 $(STAGE2_BIN) \
+		--kernel $(KERNEL_BIN) \
+		--wallpaper $(WLP_BIN) \
+		--manifest $(MANIFEST_BIN) \
+		--output $(IMG)
+
+	@echo "Image created: $(IMG)"
+	@echo "Boot sector size: $$(wc -c < $(BOOT_BIN)) bytes"
+	@echo "Stage2 size: $$(wc -c < $(STAGE2_BIN)) bytes"
+	@echo "Kernel size: $$(wc -c < $(KERNEL_BIN)) bytes"
+	@echo "Wallpaper size: $$(wc -c < $(WLP_BIN)) bytes"
 
 .PHONY: debug
 

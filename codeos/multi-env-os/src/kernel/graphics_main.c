@@ -271,14 +271,9 @@ void main() {
     mouse_init();
     // 畫桌面
     draw_desktop();
-    // 在左上角顯示模式資訊
+    // 在左上角顯示模式資訊（移除未使用變數）
     {
-        unsigned short W = get_screen_width();
-        unsigned short H = get_screen_height();
         unsigned short B = get_screen_bpp();
-        char info[32];
-        // 簡單組字串（避免 sprintf），固定顯示 640x480 16bpp or 8bpp 標示
-        info[0]='\0';
         if (B == 16) {
             draw_text(8, 8, "VBE 16bpp", COLOR_WHITE);
         } else if (B == 8) {
